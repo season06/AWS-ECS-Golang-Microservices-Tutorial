@@ -4,9 +4,9 @@
 
 ### What is Amazon Elastic Container Service?
 > Amazon ECS helps you easy to run, stop and manage containers on a cluster. <br>
-The containers are defined in a task definition that you use to run individual tasks or tasks within a service. <br>
-> Moreover, you can run the tasks and services on a serverless infrastructure that is managed by AWS Fargate. <br>
-> Alternatively, for more control over your infrastructure, you can run the tasks and services on a cluster of EC2 instances that you manage.
+> The containers are defined in a task definition that you use to run individual tasks or tasks within a service. <br>
+> Moreover, you can run the tasks and services on a **serverless** infrastructure that is managed by AWS **Fargate**. <br>
+> Alternatively, for more control over your infrastructure, you can run the tasks and services on a cluster of **EC2** instances that you manage.
 
 ### What is Fargate?
 > Fargate is one of ECS launch type. <br>
@@ -18,12 +18,11 @@ The containers are defined in a task definition that you use to run individual t
 
 ### Main Components
 #### ★ Cluster
-> ECS Cluster is a **grouping of tasks or services**. <br>
-> If you use EC2 launch type to run tasks or services, cluster is also a **grouping of container instances**.
+- Group of tasks or services.
+- It can be group of container instances if launch type is EC2.
 
 #### ★ Task Definition
 - Like a blueprint of your container.
-- Can define **multiple containers** in a task definition.
 - The following are parameters you can set in the task definition.
     - Launch type
     - CPU & memory
@@ -44,10 +43,13 @@ The containers are defined in a task definition that you use to run individual t
         > The task bypasses Docker's built-in virtual network and maps container ports directly to the ENI of the EC2 instance hosting the task. As a result, you can't run multiple instantiations of the same task on a single EC2 instance when port mappings are used.
     4. none
         > The task has no external network connectivity.
+#### ★ Task
+- An instance based on given Task Definition.
+- This is the Docker container which can contain multiple Task Definitions.
 
 #### ★ Services
-> ECS Services helps you to **run and maintain a specified number of instances** of a task definition in the cluster. <br>
-> If any tasks fail or stop, ECS Services scheduler launches another instance of your task definition to replace it in order to maintain the desired number of tasks in the service. <br>
+- Allows you to **create and maintain a number of tasks** in the cluster including their lifecycle and deployment properties from same Task Definition.
+    > If any tasks fail or stop, ECS Services scheduler launches another instance of your task definition to replace it in order to maintain the desired number of tasks in the service.
 - Often used with **Load Balance**. ECS Services maintain the number of tasks and Load balancer distributes traffic across the tasks that are associated with the ECS Services.
 - The following are services you can set in the ECS Services.
     - Deployment types
@@ -56,7 +58,7 @@ The containers are defined in a task definition that you use to run individual t
     - Service Discovery *(Introduce below)*
 - **Service Discovery**
     > ★ This is key point can that container communecate with each other. <br>
-    > Service discovery uses AWS Cloud Map API to manage HTTP and DNS namespaces for the ECS Services.
+    - Uses **AWS Cloud Map** API to manage HTTP and DNS namespaces for the ECS Services.
     - Consists of the following components:
         - namespace
             - domain name, such as `example.com`

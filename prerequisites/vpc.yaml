@@ -1,0 +1,282 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Network Template: Sample template that creates a VPC with DNS and public IPs enabled.
+
+# This template creates:
+#   VPC
+#   Internet Gateway
+#   Public Route Table
+#   Public Subnet
+#   NAT Gateway
+#   Private Route Table
+#   Private Subnet
+#   Web Security Group
+
+######################
+# Resources section
+######################
+
+Resources:
+
+  ## VPC
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      CidrBlock: 10.1.0.0/16
+      Tags:
+        - 
+          Key: "Name"
+          Value: "Web VPC"
+      
+  ## Internet Gateway
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: 
+        - 
+          Key: "Name"
+          Value: "web-igw"
+  
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  
+  ## Public Route Table
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC      
+      Tags:
+        - 
+          Key: "Name"
+          Value: "Public Route Table"
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  
+  ## Public Subnet
+  
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.1.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - 
+          Key: "Name"
+          Value: "Public Subnet 1"
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: 10.1.3.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - 
+          Key: "Name"
+          Value: "Public Subnet 2"
+
+  ## Route Table Association to subnets
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+    DependsOn: "PublicRouteTable"
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+    DependsOn: "PublicRouteTable"    
+
+  ## NACL Association to subnets
+
+  PublicSubnet1NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      NetworkAclId: !GetAtt 
+        - VPC
+        - DefaultNetworkAcl
+  
+  PublicSubnet2NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      NetworkAclId: !GetAtt 
+        - VPC
+        - DefaultNetworkAcl      
+
+  ##  NAT Gateway EIP
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: VPCGatewayAttachment
+    Properties: 
+      Domain: vpc
+
+  NatGateway: 
+    Type: AWS::EC2::NatGateway
+    Properties: 
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags: 
+        - 
+          Key: "Name"
+          Value: "web-NATgw"
+
+   ## Private Route Table
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC      
+      Tags:
+        - Key: "Name"
+          Value: "Private Route Table"
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    DependsOn: NatGateway
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  ## Private Subnet
+  
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.1.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - 
+          Key: "Name"
+          Value: "Private Subnet 1"
+ 
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: 10.1.2.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - 
+          Key: "Name"
+          Value: "Private Subnet 2"
+
+  ## Route Table Association to subnets
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+    DependsOn: "PrivateRouteTable"
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+    DependsOn: "PrivateRouteTable"
+
+  ## Security Group
+
+  WebSecurityGroup1:  
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "http-sg"
+      GroupDescription: "Allow HTTP/s"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          
+  WebSecurityGroup2:  
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "golang-sg"
+      GroupDescription: "Allow 8000"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: 0.0.0.0/0
+
+  WebSecurityGroup3:  
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "redis-sg"
+      GroupDescription: "Allow 6379"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          CidrIp: 0.0.0.0/0
+                    
+######################
+# Outputs section
+######################
+
+Outputs:
+  
+  VPC:
+    Description: VPC ID
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VPCID'
+  
+  PublicSubnet1:
+    Description: The subnet 1 ID to use for public web servers
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-Subnet1ID'
+  
+  PublicSubnet2:
+    Description: The subnet 2 ID to use for public web servers
+    Value: !Ref PublicSubnet2
+    Export:
+      Name: !Sub '${AWS::StackName}-Subnet2ID'
+
+  PrivateSubnet1:
+    Description: The subnet 1 ID to use for private web servers
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-Subnet3ID'
+
+  PrivateSubnet2:
+    Description: The subnet 2 ID to use for private web servers
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-Subnet4ID'

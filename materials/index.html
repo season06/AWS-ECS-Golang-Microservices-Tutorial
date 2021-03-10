@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Counting App</title>
+    <style>
+        .center {
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center; 
+        }
+        .color {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="center">
+        <h1>Hi, <span class="color">{{ .IP }}</span></h1>
+        <h1>You access this website <span class="color"> {{.Count }} </span> time.</h1>
+    </div>
+</body>
+</html>

@@ -270,7 +270,7 @@ docker push {Your Repo URI}.dkr.ecr.us-east-1.amazonaws.com/{Your Repo Name}:lat
 ### Step 7 : Verify the Service is Success
 - Wait for **Last status** of **tasks** on ECS cluster change to **"RUNNING"**.
 - Go back to **EC2 -> Load Balancers**, select the load balancer you created.
-- Copy **DNS name**, and paste to browser, you will see your IP and the number of visits to the website.
+- Copy **DNS name**, add the path **"/home"**, and paste to browser. You will see your IP and the number of visits to the website.
         <img src="./images/result.png" width="80%" height="80%">
 
 ## Conclusion

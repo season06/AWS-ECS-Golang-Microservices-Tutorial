@@ -3,19 +3,15 @@
 ## Introduction
 
 ### What is Amazon Elastic Container Service?
-> Amazon ECS helps you easy to run, stop and manage containers on a cluster. <br>
-> The containers are defined in a task definition that you use to run individual tasks or tasks within a service. <br>
-> Moreover, you can run the tasks and services on a **serverless** infrastructure that is managed by AWS **Fargate**. <br>
-> Alternatively, for more control over your infrastructure, you can run the tasks and services on a cluster of **EC2** instances that you manage.
+Amazon ECS is a highly scalable, fast container management service that makes it easy to run, stop, and manage containers on a cluster. The containers are defined in a task definition that you use to run individual tasks or tasks within a service. Moreover, in this context, a service is a configuration that enables you to run and maintain a specified number of tasks simultaneously in a cluster.
 
-### What is Fargate?
-> Fargate is one of ECS launch type. <br>
-> It helps you use ECS to run containers **without managing server** or cluster of EC2 instances. <br>
-> Each Fargate task has its own **isolation boundary** and does not share the underlying kernel, CPU resources, memory resources, or elastic network interface with another task.
+### ECS launch type
+- There has two launch type you can choose: **EC2**, **Fargate**
+    - **Fargate** is a **serverless** infrastructure that is managed by AWS. You use ECS to run containers **without managing server** or cluster of EC2 instances.
+        - Each Fargate task has its own **isolation boundary** and does not share the underlying kernel, CPU resources, memory resources, or elastic network interface with another task.
+    - Alternatively, for more control over your infrastructure, you can run the tasks and services on a cluster of **EC2** instances that you manage.
 
 <img src="./images/intro_ec2_fargate.png" width="80%" height="80%"> <br>
-- In ECS launch type, you can choose **Fargate** or **EC2**.
-
 ### Main Components
 #### ★ Cluster
 - Group of tasks or services.
@@ -31,7 +27,7 @@
     - Logging configuration
     - Whether task should continue to run when container finish or fail
     - The command the container should run when it is started
-    - Data volumes should be userd in the containers
+    - Data volumes should be used in the containers
     - IAM role
 - **Network mode**
     1. awsvpc
@@ -57,7 +53,7 @@
     - Auto Scaling
     - Service Discovery *(Introduce below)*
 - **Service Discovery**
-    > ★ This is key point can that container communecate with each other. <br>
+    > ★ This is key point can that container communicate with each other. <br>
     - Uses **AWS Cloud Map** API to manage HTTP and DNS namespaces for the ECS Services.
     - Consists of the following components:
         - namespace
@@ -79,7 +75,7 @@ In this Lab, We will build a **microservice** that can count the number of times
 Using **Golang** to create the website, and expose **8000** port to allow traffic to enter from this port. <br>
 And using **Redis** as the database, which port is **6379** by default. <br>
 We need to deploy the Web and Redis in **different container** and allow them to **communicate with each other**. <br>
-I don’t want Web and Redis to be accessed directly by internet, the traffic can only come in from **ALB**.
+Due to data security Web and Redis can't be accessed directly by internet, the traffic can only come in from **ALB**.
 
 ## Use Case
 - Build a **3-tier web architecture**. Put Front-end, Back-end, Database in different containers.
@@ -142,16 +138,16 @@ $(aws ecr get-login --no-include-email --region us-east-1)
     - You need to find **Repository name** and **URI** in the **ECR**, which you just created.
 ```
 docker build -t web -f Dockerfile_web .
-docker tag web:latest {Your Repo URI}.dkr.ecr.us-east-1.amazonaws.com/{Your Repo Name}:latest
-docker push {Your Repo URI}.dkr.ecr.us-east-1.amazonaws.com/{Your Repo Name}:latest
+docker tag web:latest {Your Repo URI}/{Your Repo Name}:latest
+docker push {Your Repo URI}/{Your Repo Name}:latest
 ```
 > ```docker build -t {image name} -f {Dockerfile path} .```<br>
 > If no argument `-f`, docker will automatically find the file named ```Dockerfile``` in this path.
 - Finally, **build Dockerfile** into **Redis** image, and push it into **Redis repository**.
 ```
 docker build -t redis -f Dockerfile_redis .
-docker tag redis:latest {Your Repo URI}.dkr.ecr.us-east-1.amazonaws.com/{Your Repo Name}:latest
-docker push {Your Repo URI}.dkr.ecr.us-east-1.amazonaws.com/{Your Repo Name}:latest
+docker tag redis:latest {Your Repo URI}/{Your Repo Name}:latest
+docker push {Your Repo URI}/{Your Repo Name}:latest
 ```
 > **build -> tag -> push**, is a process of pushing local image to remote repository.
 

@@ -1,14 +1,16 @@
 version: "3.3"
 services:
   redis:
-    image: redis:alpine
+    image: ${DOCKER_REGISTRY}/redis-repository 
+    build: ./docker/redis
     ports:
       - "6379:6379"
     restart: always
     networks:
       - web_network
   golang_web:
-    build: .
+    image: ${DOCKER_REGISTRY}/web-repository 
+    build: ./docker/web
     depends_on:
       - redis
     ports:

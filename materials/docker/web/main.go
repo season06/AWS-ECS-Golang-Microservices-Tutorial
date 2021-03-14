@@ -10,7 +10,7 @@ import (
 	"github.com/go-redis/redis"
 )
 
-var RedisEndpoint = "redis.internal-countweb.com:6379" // domain name which from Cloud Map
+var RedisEndpoint = "localhost:6379" // two container in a same task definition (same ENI)
 
 var CLIENT = RedisClient()
 

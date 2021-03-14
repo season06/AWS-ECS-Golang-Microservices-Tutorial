@@ -85,12 +85,11 @@ Due to data security Web and Redis can't be accessed directly by internet, the t
 
 #### How will we achieve this?
 1. Create a VPC environment.
-2. Prepare the Dockerfile and build it into Image.
-3. Create ECR repository.
+2. Prepare the Dockerfile & Docker-Compose and build it into image.
+3. Use command to create ECR repository, and push images to it.
 4. Create ECS Cluster and Task Definition.
 5. Create Application Load Balancer.
-6. Create Cloud Map, that website can use the domain name to communicate with database.
-7. Add the Task to ECS Service.
+6. Add the Task to ECS Service.
 
 ## Prerequisites
 - Basic understanding of AWS **VPC**, **ALB**, and **Container** knowledge.
@@ -106,53 +105,53 @@ Due to data security Web and Redis can't be accessed directly by internet, the t
 - We automatically generate the **Public Subnet x2**, **Private Subnet x2**, **Security Group x3**.
 
 ### Step 2 : Use Cloud9 to push image to ECR
-#### Step 2.1 : Create two ECRs
-- Go to [ECR Repositories](https://console.aws.amazon.com/ecr/repositories?region=us-east-1).
-- In **Visibility settings**, select **Private**. Only attach IAM policy can access the repository.
-- In **Repository name**, type the name you like, one for **Web**, the other for **Redis**.
-<img src="./images/create_ECR_web.png" width="80%" height="80%">
-<img src="./images/create_ECR_redis.png" width="80%" height="80%">
-
-#### Step 2.2 : Create Cloud9 Environment
+#### Step 2.1 : Create Cloud9 Environment
 - Go to [AWS Cloud9](https://console.aws.amazon.com/cloud9/home/product), click create environment
 - Type the name you like.
 - Let all setting **default**. Then **Create environment**.
 <img src="./images/cloud9.png" width="80%" height="80%">
 
-#### Step 2.3 : Modify EC2 IAM role
+#### Step 2.2 : Modify EC2 IAM role
 - Go to [EC2 Instances console](https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Instances:).
 - Find the instance we create through Cloud9, right-click and find **Security**, then click **Modify IAM role**.
 - In **Modify IAM role**, select **Allow EC2 Access ECR**.
 <img src="./images/modify_IAM_role.png" width="80%" height="80%">
 <img src="./images/allow_ec2_access_ecr.png" width="80%" height="80%">
 
-#### Step 2.4 : Build images
+#### Step 2.3 : Build images
 - Go back to **Cloud9** IDE and **upload local files**. ([microservice_with_ECS](./materials))
 - There will have **four files** in the left panel.
     <img src="./images/cloud9_upload_file.png" width="80%" height="80%">
-- First, in the command-line interface, **login** to AWS.
-```
-$(aws ecr get-login --no-include-email --region us-east-1)
-```
-- Then, **build Dockerfile** into a **Web** image, and push it into **Web repository**.
-    - You need to find **Repository name** and **URI** in the **ECR**, which you just created.
-```
-docker build -t web -f Dockerfile_web .
-docker tag web:latest {Your Repo URI}/{Your Repo Name}:latest
-docker push {Your Repo URI}/{Your Repo Name}:latest
-```
-> ```docker build -t {image name} -f {Dockerfile path} .```<br>
-> If no argument `-f`, docker will automatically find the file named ```Dockerfile``` in this path.
-- Finally, **build Dockerfile** into **Redis** image, and push it into **Redis repository**.
-```
-docker build -t redis -f Dockerfile_redis .
-docker tag redis:latest {Your Repo URI}/{Your Repo Name}:latest
-docker push {Your Repo URI}/{Your Repo Name}:latest
-```
-> **build -> tag -> push**, is a process of pushing local image to remote repository.
+- First, in the command-line interface, 
+    ```
+    sudo curl -L https://github.com/docker/compose/releases/download/1.22.0/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
+    # Enable executable permissions
+    sudo chmod +x /usr/local/bin/docker-compose
+    # Confirm installation is successful
+    docker-compose version
+    ```
+- Second, **login** to AWS.
+    ```
+    $(aws ecr get-login --no-include-email --region us-east-1)
+    ```
+- Third, **create an ECR repository** from docker-compose using **aws-cli**.
+    > Remember update ```{ID}.dkr.ecr.{Region}.amazonaws.com``` in ```.env``` file
+    ```
+    for r in $(grep 'image: \${DOCKER_REGISTRY}' docker-compose.yml | sed -e 's/^.*\///'); do aws ecr create-repository --repository-name "$r"; done
+    ```
+    > Use ```grep``` to find ```image-name``` in the docker-compose.yml. And use For-Loop to automatically generate ECR repository.
+- Then, **build** docker-compose into images.
+    ```
+    docker-compose build
+    ```
+- Finally, **push** images to ECR.
+    > In docker-compose ```image``` , we already tag image and repository.
+    ```
+    docker-compose push
+    ```
 
-#### Step 2.5 : Check ECR
-- Click into repository, you will find there has a image you just pushed from Cloud9.
+#### Step 2.4 : Check ECR
+- Go to [ECR](https://console.aws.amazon.com/ecr/repositories?region=us-east-1), click into repository, you will find there has a image you just pushed from Cloud9.
     <img src="./images/check_ECR.png" width="80%" height="80%">
 
 ### Step 3 : Create ECS Cluster
@@ -162,11 +161,12 @@ docker push {Your Repo URI}/{Your Repo Name}:latest
 - In **Networking**, **do not Create VPC**. We already setup vpc network from CloudFormation.
     <img src="./images/create_ECS_cluster_2.png" width="80%" height="80%">
 
-### Step 4 : Create two Task Definitions, one for web, the other for redis
+### Step 4 : Create Task Definitions
+> In this section, we put the **two containers** (web & redis) in the **same Task Definition**.
 - In ECS console, click **Task Definitions** in the left penal.
 - Choose **Fargate** as a launch type.
     <img src="./images/create_ECS_task_1.png" width="80%" height="80%">
-- In **Task Definition Name**, type **web-task**.
+- In **Task Definition Name**, type **web-redis-task**.
 - In **Task Role**, select **ecsTaskExecutionRole**.
     > If the launch type is **Fargate**, Network mode is fixed to **awsvpc**.
     <img src="./images/create_ECS_task_2.png" width="80%" height="80%">
@@ -175,52 +175,21 @@ docker push {Your Repo URI}/{Your Repo Name}:latest
 - In **Container Definitions**, click **Add Container**.
     - Find **web Image URI** from ECR.
     - In **Port mappings**, type **8000** as expose port.
-        > You can choose paste **repository-url**, or **{image name}:{tag}** as an image. <br>
-        > If you choose **repository-url**, when you push the same image into ECR, task will always select the image which **tag is the latest**. <br>
+    - Click **Add**. We have completed the creation of web container..
+        - Find **redis Image URI** from ECR.
+        - In Port mappings, type **6379** as expose port.
+        - Then, click **Add**. We have completed the creation of redis container.
+    > You can choose paste **repository-url**, or **{image name}:{tag}** as an image. <br>
+    > If you choose **repository-url**, when you push the same image into ECR, task will always select the image which **tag is the latest**. <br>
     <img src="./images/create_ECS_task_web_container.png" width="80%" height="80%">
-    
-#### ★★★ Repeat the above steps to create redis Task Definition
-- **★ Note ★**, In **Add Container**, 
-    - Find **redis Image URI** from ECR.
-    - In **Port mappings**, type **6379** as expose port.
-        <img src="./images/create_ECS_task_redis_container.png" width="80%" height="80%">
+    <img src="./images/create_ECS_task_redis_container.png" width="80%" height="80%">
+
 > In Container Definitions, **Storage and Logging** has already set up **CloudWatch** by default. <br>
 > If you run container has any problem or bug, can go to cloudwatch to check logs. <br>
 > Also, you can setup the file you want to **mount** between local and container in this part.
 
-### Step 5 : Create Service - redis
-- Go back to **web-cluster** we created. In the **Services**, click **Create**.
-    <img src="./images/create_service.png" width="80%" height="80%">
-- In **Configure Service**
-    - In **Launch type**, choose **Fargate**.
-    - In **Task Definition,** select **redis-task**.
-    - In **Service name**, type **redis**.
-    - In **Number of tasks**, type **1**.
-    <img src="./images/ECS_service_redis_1.png" width="80%" height="80%">
-- In **Configure network**
-    - In **Cluster VPC**, select **Web VPC** we create from CloudFormation.
-    - In **Subnets**, we put container into **Private Subnet**.
-    - In **Security group**, click **Edit**, and select **redis-sg**, which allows traffic enter from 6379 port.
-    - In **Auto-assign public IP**, select **DISABLED**.
-        <img src="./images/ECS_service_redis_2.png" width="80%" height="80%">
-        <img src="./images/ECS_service_redis_3.png" width="80%" height="80%">
-- We don't need any load balancer for redis service.
-- In **Service discovery**
-    - Create **Namespace**, type **internal-countweb.com**.
-    - Type **redis** as service name.
-        <img src="./images/service_discovery_1.png" width="80%" height="80%">
-        <img src="./images/service_discovery_2.png" width="80%" height="80%">
-- After create redis service which with Service Discovery, go to **Cloud Map**, you can find the **Domain name** you created.
-- Click in, you can see there has one service **"redis"**.
-    > **★ Note ★**  <br>
-    > You need to use this Service name & Domain name to **connect** web and redis. <br>
-    > You can find **"redis.internal-countweb.com"** is setting in the code of **main.go**, allowing web and redis to communicate. <br>
-    > If you named the different name, please modify the variable **RedisEndpoint** which in **main.go**, and run the ECR process of **"build -> tag -> push"**. <br>
-    > After pushing the new image, the tasks in the cluster will automatically restart by service scheduler.
-    <img src="./images/cloudmap.png" width="80%" height="80%">
-
-### Step 6 : Create Service - web
-#### Step 6.1 : Create Application Load Balancer for web
+### Step 5 : Create Service
+#### Step 5.1 : Create Application Load Balancer for web
 > In this section, we let Load Balancer **listen port 80** and forward all traffic **from port 80 to port 8000** of the web. <br>
 > So it is importent to set right **Listen (80)** and **Target Group (8000)**.
 
@@ -244,7 +213,8 @@ docker push {Your Repo URI}/{Your Repo Name}:latest
 - In **Health checks**, type **/home** as path. ALB will ping this URL to check website is healthy or not.
         <img src="./images/LB_3.png" width="80%" height="80%">
 
-#### Step 6.2 : Go back to ECS to create service for web.
+#### Step 5.2 : Go back to ECS to create service for web.
+- In the **Services**, click **Create**.
 - In **Configure Service**
     - In **Launch type**, choose **Fargate**.
     - In **Task Definition,** select **web-task**.
@@ -265,11 +235,29 @@ docker push {Your Repo URI}/{Your Repo Name}:latest
         <img src="./images/ECS_service_web_4.png" width="80%" height="80%">
         <img src="./images/ECS_service_web_5.png" width="80%" height="80%">
 
-### Step 7 : Verify the Service is Success
+### Step 6 : Verify the Service is Success
 - Wait for **Last status** of **tasks** on ECS cluster change to **"RUNNING"**.
 - Go back to **EC2 -> Load Balancers**, select the load balancer you created.
 - Copy **DNS name**, add the path **"/home"**, and paste to browser. You will see your IP and the number of visits to the website.
         <img src="./images/result.png" width="80%" height="80%">
+
+### ★ Notice !! ★
+Maybe you will confuse, why Web can connect to Redis? We didn’t set anything. <br>
+The key point is we put web and redis container in the **same task definition**. <br>
+Also, you can find the variable **RedisEndpoint** is setting as “**localhost:6379**” in the code of **main.go**. <br>
+
+According to official document: <br>
+> In Fargate, when you **launch multiple containers as part of a single task**, they can also **communicate with each other over the local loopback interface**. Fargate uses a special container networking mode called **awsvpc**, which gives all the containers in a task a shared **elastic network interface** to use for communication.
+
+Each task has its own **Elastic Network Interface (ENI)** which include a private IP. <br>
+The multiple containers in an ENI can share the same network. <br>
+That is the reason why IP address set to **“localhost”** or “**127.0.0.1**” can run. <br>
+
+<img src="./images/Task_Networking_in_AWS_Fargate.png" width="80%" height="80%">
+
+Alternatively, if you put the containers **in the different Task Definition**, the localhost won’t be work because the two tasks have different network environments. <br>
+There has another solution called “**Service Discovery**”, which combined with “**AWS Cloud Map**”. <br>
+If you are interested in, try it.
 
 ## Conclusion
 Congratulations!! <br>

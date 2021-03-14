@@ -122,7 +122,7 @@ Due to data security Web and Redis can't be accessed directly by internet, the t
 - Go back to **Cloud9** IDE and **upload local files**. ([microservice_with_ECS](./materials))
 - There will have **four files** in the left panel.
     <img src="./images/cloud9_upload_file.png" width="80%" height="80%">
-- First, in the command-line interface, 
+- First, in the command-line interface, **install docker-compose**.
     ```
     sudo curl -L https://github.com/docker/compose/releases/download/1.22.0/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
     # Enable executable permissions
@@ -224,7 +224,7 @@ Due to data security Web and Redis can't be accessed directly by internet, the t
 - In **Configure network**
     - In **Cluster VPC**, select **Web VPC** we create from CloudFormation.
     - In **Subnets**, we put container into **Private Subnet**.
-    - In **Security group**, click **Edit**, and select **golang-sg**, which allows traffic enter from 8000 port.
+    - In **Security group**, click **Edit**, and select **golang-sg & redis-sg**, which allows traffic enter from **8000 & 6379** port.
     - In **Auto-assign public IP**, select **DISABLED**.
         <img src="./images/ECS_service_web_2.png" width="80%" height="80%">
         <img src="./images/ECS_service_web_3.png" width="80%" height="80%">

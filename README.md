@@ -246,7 +246,7 @@ Maybe you will confuse, why Web can connect to Redis? We didn’t set anything. 
 The key point is we put web and redis container in the **same task definition**. <br>
 Also, you can find the variable **RedisEndpoint** is setting as “**localhost:6379**” in the code of **main.go**. <br>
 
-According to official document: <br>
+According to [official document](https://aws.amazon.com/tw/blogs/compute/task-networking-in-aws-fargate/): <br>
 > In Fargate, when you **launch multiple containers as part of a single task**, they can also **communicate with each other over the local loopback interface**. Fargate uses a special container networking mode called **awsvpc**, which gives all the containers in a task a shared **elastic network interface** to use for communication.
 
 Each task has its own **Elastic Network Interface (ENI)** which include a private IP. <br>
@@ -267,3 +267,7 @@ Next time you want to deploy a website, there is a lightweight way you can choos
 ## Reference
 [AWS ECS Developer Guide](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html) <br>
 [AWS Cloud Map Developer Guide](https://docs.aws.amazon.com/cloud-map/latest/dg/what-is-cloud-map.html)
+[Task Networking in AWS Fargate](https://aws.amazon.com/tw/blogs/compute/task-networking-in-aws-fargate/)
+[How to make two containers connectable in AWS ECS Fargate?](https://stackoverflow.com/questions/51498451/how-to-make-two-containers-connectable-in-aws-ecs-fargate)
+[docker-compose push image to aws ecr](https://stackoverflow.com/questions/44052999/docker-compose-push-image-to-aws-ecr)
+[Docker-Compose: Image and build together](https://github.com/docker/compose/pull/2458)
